@@ -36,6 +36,8 @@ Ensemble_MultiDisease_Prediction/
 
 
 ⚙️ Setup Instructions
+
+
 1️⃣ Clone the repository
 git clone https://github.com/<your-username>/Ensemble_MultiDisease_Prediction.git
 cd Ensemble_MultiDisease_Prediction
@@ -66,7 +68,11 @@ Flask
 
 SHAP / LIME (Explainable AI tools – upcoming)
 
+
+
 🚀 Next Steps
+
+
 
  Train ensemble models for each disease.
 
@@ -74,7 +80,9 @@ SHAP / LIME (Explainable AI tools – upcoming)
 
  Build Flask web dashboard for real-time predictions.
 
+
+
 👩‍💻 Author
 
-Developed by Rakshitha K
+Developed by Rakshitha K |
 MCA Student
