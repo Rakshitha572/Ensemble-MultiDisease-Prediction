@@ -1,5 +1,5 @@
-import pandas as pd # type: ignore
-from sklearn.preprocessing import StandardScaler, LabelEncoder # type: ignore
+import pandas as pd  # type: ignore
+from sklearn.preprocessing import StandardScaler, LabelEncoder  # type: ignore
 
 # -----------------------------
 # Step 1: Load all datasets
@@ -29,7 +29,8 @@ heart.rename(columns={
     'trestbps': 'blood_pressure',
     'chol': 'cholesterol',
     'thalach': 'heart_rate',
-    'target': 'target'
+    'target': 'target',
+    'condition': 'target'  # in case CSV uses 'condition'
 }, inplace=True)
 
 # Kidney
@@ -41,15 +42,17 @@ kidney.rename(columns={
     'su': 'sugar',
     'rbc': 'rbc',
     'pc': 'pus_cell',
+    'pcc': 'pus_cell_clumps',
+    'ba': 'bacteria',
     'bgr': 'blood_glucose_random',
     'bu': 'blood_urea',
     'sc': 'creatinine',
     'sod': 'sodium',
     'pot': 'potassium',
     'hemo': 'hemoglobin',
-    'pcv': 'pcv',
+    'pcv': 'packed_cell_volume',
     'wbcc': 'white_blood_cell_count',
-    'rbcc': 'red_blood_cell_count',
+    'rc': 'red_blood_cell_count',
     'htn': 'hypertension',
     'dm': 'diabetes_mellitus',
     'cad': 'coronary_artery_disease',
@@ -66,17 +69,33 @@ parkinsons.rename(columns={
 }, inplace=True)
 
 # -----------------------------
-# Step 3: Handle missing values
+# Step 3: Clean and Handle Missing Values
 # -----------------------------
-# Simple approach: fill numerical with mean, categorical with mode
 def fill_missing(df):
-    for col in df.columns:
-        if df[col].dtype == 'object':
-            df[col].fillna(df[col].mode()[0], inplace=True)
+    df_clean = df.copy()
+    for col in df_clean.columns:
+        if df_clean[col].dtype == 'object':
+            df_clean[col] = df_clean[col].fillna(df_clean[col].mode()[0])
         else:
-            df[col].fillna(df[col].mean(), inplace=True)
-    return df
+            df_clean[col] = df_clean[col].fillna(df_clean[col].mean())
+    return df_clean
 
+# Strip whitespace from kidney categorical columns
+for col in ['diabetes_mellitus', 'coronary_artery_disease', 'target']:
+    if col in kidney.columns:
+        kidney[col] = kidney[col].astype(str).str.strip()
+
+# Convert numeric-like kidney columns to float safely
+numeric_cols_kidney = [
+    'age', 'blood_pressure', 'blood_urea', 'creatinine',
+    'hemoglobin', 'packed_cell_volume', 'white_blood_cell_count', 'red_blood_cell_count'
+]
+numeric_cols_kidney = [col for col in numeric_cols_kidney if col in kidney.columns]
+
+for col in numeric_cols_kidney:
+    kidney[col] = pd.to_numeric(kidney[col], errors='coerce')
+
+# Fill missing values
 diabetes = fill_missing(diabetes)
 heart = fill_missing(heart)
 kidney = fill_missing(kidney)
@@ -87,31 +106,38 @@ parkinsons = fill_missing(parkinsons)
 # -----------------------------
 le = LabelEncoder()
 
-# Heart: gender
+# Heart
 if 'gender' in heart.columns:
-    heart['gender'] = le.fit_transform(heart['gender'])
+    heart['gender'] = le.fit_transform(heart['gender'].astype(str))
 
-# Kidney: categorical columns
-categorical_cols = ['rbc','pc','htn','dm','cad','appet','pe','ane']
+# Kidney categorical columns
+categorical_cols = [
+    'rbc', 'pus_cell', 'pus_cell_clumps', 'bacteria',
+    'hypertension', 'diabetes_mellitus', 'coronary_artery_disease',
+    'appetite', 'pedal_edema', 'anemia', 'target'
+]
 for col in categorical_cols:
     if col in kidney.columns:
-        kidney[col] = le.fit_transform(kidney[col])
+        kidney[col] = le.fit_transform(kidney[col].astype(str))
 
 # -----------------------------
 # Step 5: Normalize numeric features
 # -----------------------------
 scaler = StandardScaler()
 
+# Diabetes
 numeric_cols_diabetes = ['glucose', 'blood_pressure', 'bmi', 'insulin', 'age']
 diabetes[numeric_cols_diabetes] = scaler.fit_transform(diabetes[numeric_cols_diabetes])
 
+# Heart
 numeric_cols_heart = ['age', 'blood_pressure', 'cholesterol', 'heart_rate']
 heart[numeric_cols_heart] = scaler.fit_transform(heart[numeric_cols_heart])
 
-numeric_cols_kidney = ['age', 'blood_pressure', 'blood_urea', 'creatinine', 'hemoglobin']
+# Kidney
 kidney[numeric_cols_kidney] = scaler.fit_transform(kidney[numeric_cols_kidney])
 
-numeric_cols_parkinsons = parkinsons.columns.drop(['patient_id','target'])
+# Parkinson's: all numeric columns except patient_id and target
+numeric_cols_parkinsons = parkinsons.select_dtypes(include=['float64', 'int64']).columns
 parkinsons[numeric_cols_parkinsons] = scaler.fit_transform(parkinsons[numeric_cols_parkinsons])
 
 # -----------------------------
